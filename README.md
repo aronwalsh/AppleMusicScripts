@@ -67,6 +67,32 @@ python3 fetch_artwork.py
 python3 fetch_artwork.py --apply
 ```
 
+### remove_duplicates.py
+
+Find and remove duplicate tracks from your library.
+
+**Features:**
+- Identifies duplicates by matching name + artist + album
+- Processes large libraries in batches
+- Filter by specific artist or album
+- Dry-run mode to preview before deleting
+
+**Usage:**
+
+```bash
+# Preview duplicates (dry run)
+python3 remove_duplicates.py
+
+# Actually remove duplicates
+python3 remove_duplicates.py --apply
+
+# Check specific artist only
+python3 remove_duplicates.py --artist "Xiu Xiu"
+
+# Check specific album only
+python3 remove_duplicates.py --album "Hamilton"
+```
+
 ### restore_direct.py
 
 Restore loved songs and playlists from a JSON export file.
