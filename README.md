@@ -33,18 +33,92 @@ python3 import_music.py /path/to/music/folder --import
 
 # Resume an interrupted import
 python3 import_music.py /path/to/music/folder --import --resume
-
-# Customize batch size
-python3 import_music.py /path/to/music/folder --import --batch-size 100
 ```
 
-**Options:**
-| Option | Description |
-|--------|-------------|
-| `SOURCE_FOLDER` | Path to folder containing music (required) |
-| `--import` | Actually perform the import (default is dry-run) |
-| `--resume` | Resume from a previous incomplete import |
-| `--batch-size N` | Number of files to add per batch (default: 50) |
+### find_missing_artwork.py
+
+Scan your library for albums that have no artwork.
+
+**Usage:**
+
+```bash
+python3 find_missing_artwork.py
+```
+
+Shows all albums without artwork, grouped by artist/album with track counts.
+
+### fetch_artwork.py
+
+Fetch missing album artwork from Apple Music and apply it to your library.
+
+**Features:**
+- Searches iTunes API for matching albums
+- Downloads high-resolution artwork (600x600)
+- Applies artwork to all tracks in matching albums
+- Dry-run mode to preview before applying
+
+**Usage:**
+
+```bash
+# Preview what artwork would be fetched (dry run)
+python3 fetch_artwork.py
+
+# Actually download and apply artwork
+python3 fetch_artwork.py --apply
+```
+
+### restore_direct.py
+
+Restore loved songs and playlists from a JSON export file.
+
+**Features:**
+- Marks songs as "favorited" in Music app
+- Creates playlists and adds matched tracks
+- Supports restoring only loved songs or only playlists
+- Dry-run mode to preview before applying
+
+**Usage:**
+
+```bash
+# Preview what would be restored (dry run)
+python3 restore_direct.py export.json
+
+# Actually apply changes
+python3 restore_direct.py export.json --apply
+
+# Restore only loved songs
+python3 restore_direct.py export.json --apply --loved-only
+
+# Restore only playlists
+python3 restore_direct.py export.json --apply --playlists-only
+
+# Restore a specific playlist
+python3 restore_direct.py export.json --apply --playlist "My Playlist"
+```
+
+**JSON Export Format:**
+
+```json
+{
+  "loved_songs": [
+    {"name": "Song Title", "artist": "Artist Name", "album": "Album Name"}
+  ],
+  "playlists": [
+    {
+      "name": "Playlist Name",
+      "tracks": [
+        {"name": "Song Title", "artist": "Artist Name", "album": "Album Name"}
+      ]
+    }
+  ]
+}
+```
+
+## Additional Scripts
+
+- `restore_from_export.py` - Alternative restore that pre-fetches library for matching
+- `restore_loved.py` - Restore loved songs from a simple text file
+- `restore_library.py` - Restore from iPhone backup (requires `pymobiledevice3`)
 
 ## How It Works
 
