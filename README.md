@@ -6,7 +6,7 @@ A collection of Python scripts for automating Apple Music tasks on macOS.
 
 - macOS with the Music app
 - Python 3.8+
-- No external dependencies (uses only standard library)
+- Optional: `mutagen` for artwork embedding (`pip3 install mutagen`)
 
 ## Scripts
 
@@ -65,6 +65,28 @@ python3 fetch_artwork.py
 
 # Actually download and apply artwork
 python3 fetch_artwork.py --apply
+```
+
+### fix_artwork.py
+
+Fix missing artwork by embedding directly into audio files and re-importing.
+
+**Features:**
+- Downloads artwork from Apple Music/iTunes
+- Embeds artwork directly into MP3, M4A, and FLAC files
+- Re-imports tracks so Music app recognizes the artwork
+- More reliable than AppleScript-only approach
+
+**Requires:** `pip3 install mutagen`
+
+**Usage:**
+
+```bash
+# Preview what would be fixed (dry run)
+python3 fix_artwork.py
+
+# Actually fix artwork
+python3 fix_artwork.py --apply
 ```
 
 ### remove_duplicates.py
@@ -142,6 +164,7 @@ python3 restore_direct.py export.json --apply --playlist "My Playlist"
 
 ## Additional Scripts
 
+- `embed_artwork.py` - Embed artwork into files without re-importing (requires `mutagen`)
 - `restore_from_export.py` - Alternative restore that pre-fetches library for matching
 - `restore_loved.py` - Restore loved songs from a simple text file
 - `restore_library.py` - Restore from iPhone backup (requires `pymobiledevice3`)
