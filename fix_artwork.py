@@ -23,6 +23,26 @@ except ImportError:
 
 sys.stdout.reconfigure(line_buffering=True)
 
+MAX_ARTWORK_SIZE = 20 * 1024 * 1024  # 20MB
+
+
+def escape_for_applescript(s: str) -> str:
+    """Escape string for use in AppleScript double-quoted strings."""
+    if not s:
+        return ""
+    return s.replace('\\', '\\\\').replace('"', '\\"')
+
+
+def is_close_match(query: str, result: str) -> bool:
+    """Check if two strings are a close match, not just substring containment."""
+    if query == result:
+        return True
+    if query in result or result in query:
+        longer = max(len(query), len(result))
+        shorter = min(len(query), len(result))
+        return shorter / longer >= 0.5 if longer > 0 else False
+    return False
+
 
 def get_tracks_without_artwork():
     """Get tracks without artwork with their file paths."""
@@ -80,8 +100,8 @@ def search_itunes_artwork(album: str, artist: str) -> str:
                 result_album = result.get('collectionName', '').lower()
                 result_artist = result.get('artistName', '').lower()
 
-                if (album_lower in result_album or result_album in album_lower) and \
-                   (artist_lower in result_artist or result_artist in artist_lower):
+                if is_close_match(album_lower, result_album) and \
+                   is_close_match(artist_lower, result_artist):
                     artwork_url = result.get('artworkUrl100', '')
                     if artwork_url:
                         return artwork_url.replace('100x100', '600x600')
@@ -89,8 +109,8 @@ def search_itunes_artwork(album: str, artist: str) -> str:
             artwork_url = data['results'][0].get('artworkUrl100', '')
             if artwork_url:
                 return artwork_url.replace('100x100', '600x600')
-    except:
-        pass
+    except Exception as e:
+        print(f"  Warning: iTunes API error for '{album}': {e}")
     return None
 
 
@@ -102,10 +122,13 @@ def download_artwork(url: str) -> bytes:
         })
         with urllib.request.urlopen(req, timeout=30) as response:
             data = response.read()
+            if len(data) > MAX_ARTWORK_SIZE:
+                print(f"  Warning: Artwork too large ({len(data)} bytes), skipping")
+                return None
             if len(data) > 100 and (data[:2] == b'\xff\xd8' or data[:8] == b'\x89PNG\r\n\x1a\n'):
                 return data
-    except:
-        pass
+    except Exception as e:
+        print(f"  Warning: Failed to download artwork: {e}")
     return None
 
 
@@ -144,7 +167,7 @@ def embed_artwork(filepath: str, artwork_data: bytes) -> bool:
             audio.save()
             return True
     except Exception as e:
-        pass
+        print(f"    Error embedding in {filepath}: {e}")
     return False
 
 
@@ -166,7 +189,7 @@ def remove_track(track_id: str) -> bool:
 
 def add_track(filepath: str) -> bool:
     """Add track to Music library."""
-    escaped = filepath.replace('\\', '\\\\').replace('"', '\\"')
+    escaped = escape_for_applescript(filepath)
     script = f'tell application "Music" to add POSIX file "{escaped}" to library playlist 1'
     result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=30)
     return result.returncode == 0

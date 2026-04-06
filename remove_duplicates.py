@@ -173,7 +173,10 @@ def main():
         to_delete = []
         for tracks_list in duplicates.values():
             # Sort by ID to keep consistent ordering, delete all but first
-            sorted_tracks = sorted(tracks_list, key=lambda x: int(x['id']))
+            try:
+                sorted_tracks = sorted(tracks_list, key=lambda x: int(x['id']))
+            except ValueError:
+                sorted_tracks = sorted(tracks_list, key=lambda x: x['id'])
             for t in sorted_tracks[1:]:
                 to_delete.append(t['id'])
 

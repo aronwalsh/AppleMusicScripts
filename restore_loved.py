@@ -22,6 +22,13 @@ from typing import Set, Tuple, List
 sys.stdout.reconfigure(line_buffering=True)
 
 
+def escape_for_applescript(s: str) -> str:
+    """Escape string for use in AppleScript double-quoted strings."""
+    if not s:
+        return ""
+    return s.replace('\\', '\\\\').replace('"', '\\"')
+
+
 def normalize(s: str) -> str:
     if not s:
         return ""
@@ -42,7 +49,7 @@ def get_library() -> Set[Tuple[str, str, str]]:
     end tell
     '''
 
-    result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=300)
+    result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=600)
 
     library = set()
     for line in result.stdout.strip().split('\n'):
@@ -106,8 +113,8 @@ def find_in_library(title: str, artist: str, album: str, library: Set[Tuple[str,
 
 def set_loved(name: str, artist: str) -> bool:
     """Mark a track as loved."""
-    name_esc = name.replace('\\', '\\\\').replace('"', '\\"')
-    artist_esc = artist.replace('\\', '\\\\').replace('"', '\\"')
+    name_esc = escape_for_applescript(name)
+    artist_esc = escape_for_applescript(artist)
 
     script = f'''
     tell application "Music"
@@ -126,7 +133,7 @@ def set_loved(name: str, artist: str) -> bool:
     result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True)
     try:
         return int(result.stdout.strip()) > 0
-    except:
+    except (ValueError, AttributeError):
         return False
 
 

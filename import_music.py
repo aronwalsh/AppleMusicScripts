@@ -28,8 +28,15 @@ sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
 AUDIO_EXTENSIONS = {'.mp3', '.m4a', '.aac', '.wav', '.flac', '.aiff', '.alac'}
-PROGRESS_FILE = ".import_progress.json"  # Stored in current working directory
+PROGRESS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".import_progress.json")
 BATCH_SIZE = 50  # Number of files to add per AppleScript call
+
+
+def escape_for_applescript(s: str) -> str:
+    """Escape string for use in AppleScript double-quoted strings."""
+    if not s:
+        return ""
+    return s.replace('\\', '\\\\').replace('"', '\\"')
 
 
 def normalize_string(s: str) -> str:
@@ -71,7 +78,8 @@ def get_current_library() -> Set[Tuple[str, str, str]]:
     result = subprocess.run(
         ['osascript', '-e', script],
         capture_output=True,
-        text=True
+        text=True,
+        timeout=600
     )
 
     if result.returncode != 0:
@@ -164,7 +172,7 @@ def add_tracks_batch(filepaths: List[str]) -> Tuple[int, int, List[str]]:
     # Build AppleScript that adds multiple files
     file_list_parts = []
     for fp in filepaths:
-        escaped = fp.replace('\\', '\\\\').replace('"', '\\"')
+        escaped = escape_for_applescript(fp)
         file_list_parts.append(f'POSIX file "{escaped}"')
 
     file_list = ', '.join(file_list_parts)
@@ -204,7 +212,7 @@ def add_tracks_batch(filepaths: List[str]) -> Tuple[int, int, List[str]]:
     failed_files = []
 
     for fp in filepaths:
-        escaped = fp.replace('\\', '\\\\').replace('"', '\\"')
+        escaped = escape_for_applescript(fp)
         single_script = f'tell application "Music" to add POSIX file "{escaped}" to library playlist 1'
         r = subprocess.run(['osascript', '-e', single_script], capture_output=True, text=True)
         if r.returncode == 0:

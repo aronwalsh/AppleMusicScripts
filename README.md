@@ -1,177 +1,107 @@
 # Apple Music Scripts
 
-A collection of Python scripts for automating Apple Music tasks on macOS.
+Python scripts for automating Apple Music on macOS.
 
 ## Requirements
 
-- macOS with the Music app
-- Python 3.8+
-- Optional: `mutagen` for artwork embedding (`pip3 install mutagen`)
+- macOS with Music app, Python 3.8+
+- Optional: `pip3 install mutagen` (for artwork embedding)
 
 ## Scripts
 
-### import_music.py
+All destructive scripts default to **dry-run mode** — pass `--apply` to make changes.
 
-Import music from a folder into your Apple Music library, automatically skipping duplicates.
+### Importing & Cleanup
 
-**Features:**
-- Scans folders organized as `Artist/Album/Track.ext`
-- Detects duplicates by matching track name + artist + album (case-insensitive)
-- Batch processing for fast imports (50 files per batch by default)
-- Resume capability for interrupted imports
-- Dry-run mode to preview before importing
-- Supports MP3, M4A, AAC, WAV, FLAC, AIFF, and ALAC formats
-
-**Usage:**
+**import_music.py** — Import music from a folder, skipping duplicates.
 
 ```bash
-# Preview what would be imported (dry run)
-python3 import_music.py /path/to/music/folder
-
-# Actually import the music
-python3 import_music.py /path/to/music/folder --import
-
-# Resume an interrupted import
-python3 import_music.py /path/to/music/folder --import --resume
+python3 import_music.py /path/to/music              # dry run
+python3 import_music.py /path/to/music --import      # import
+python3 import_music.py /path/to/music --import --resume
 ```
 
-### find_missing_artwork.py
+**remove_duplicates.py** — Find and remove duplicate tracks (by name + artist + album).
 
-Scan your library for albums that have no artwork.
+```bash
+python3 remove_duplicates.py                          # dry run
+python3 remove_duplicates.py --apply
+python3 remove_duplicates.py --artist "Xiu Xiu" --album "Hamilton"
+```
 
-**Usage:**
+### Artwork
+
+**find_missing_artwork.py** — List albums with no artwork.
 
 ```bash
 python3 find_missing_artwork.py
 ```
 
-Shows all albums without artwork, grouped by artist/album with track counts.
-
-### fetch_artwork.py
-
-Fetch missing album artwork from Apple Music and apply it to your library.
-
-**Features:**
-- Searches iTunes API for matching albums
-- Downloads high-resolution artwork (600x600)
-- Applies artwork to all tracks in matching albums
-- Dry-run mode to preview before applying
-
-**Usage:**
+**fetch_artwork.py** — Fetch artwork from iTunes API and apply via AppleScript.
 
 ```bash
-# Preview what artwork would be fetched (dry run)
-python3 fetch_artwork.py
-
-# Actually download and apply artwork
 python3 fetch_artwork.py --apply
 ```
 
-### fix_artwork.py
-
-Fix missing artwork by embedding directly into audio files and re-importing.
-
-**Features:**
-- Downloads artwork from Apple Music/iTunes
-- Embeds artwork directly into MP3, M4A, and FLAC files
-- Re-imports tracks so Music app recognizes the artwork
-- More reliable than AppleScript-only approach
-
-**Requires:** `pip3 install mutagen`
-
-**Usage:**
+**embed_artwork.py** — Fetch and embed artwork directly into audio files. Requires `mutagen`.
 
 ```bash
-# Preview what would be fixed (dry run)
-python3 fix_artwork.py
+python3 embed_artwork.py --apply
+python3 embed_artwork.py --apply --album "Album Name"
+```
 
-# Actually fix artwork
+**fix_artwork.py** — Embed artwork into files and re-import tracks. Most reliable option. Requires `mutagen`.
+
+```bash
 python3 fix_artwork.py --apply
 ```
 
-### remove_duplicates.py
+### Restoring Loved Songs & Playlists
 
-Find and remove duplicate tracks from your library.
-
-**Features:**
-- Identifies duplicates by matching name + artist + album
-- Processes large libraries in batches
-- Filter by specific artist or album
-- Dry-run mode to preview before deleting
-
-**Usage:**
+**restore_direct.py** — Restore from JSON export. Fast (no library pre-fetch).
 
 ```bash
-# Preview duplicates (dry run)
-python3 remove_duplicates.py
-
-# Actually remove duplicates
-python3 remove_duplicates.py --apply
-
-# Check specific artist only
-python3 remove_duplicates.py --artist "Xiu Xiu"
-
-# Check specific album only
-python3 remove_duplicates.py --album "Hamilton"
-```
-
-### restore_direct.py
-
-Restore loved songs and playlists from a JSON export file.
-
-**Features:**
-- Marks songs as "favorited" in Music app
-- Creates playlists and adds matched tracks
-- Supports restoring only loved songs or only playlists
-- Dry-run mode to preview before applying
-
-**Usage:**
-
-```bash
-# Preview what would be restored (dry run)
-python3 restore_direct.py export.json
-
-# Actually apply changes
 python3 restore_direct.py export.json --apply
-
-# Restore only loved songs
 python3 restore_direct.py export.json --apply --loved-only
-
-# Restore only playlists
 python3 restore_direct.py export.json --apply --playlists-only
-
-# Restore a specific playlist
 python3 restore_direct.py export.json --apply --playlist "My Playlist"
 ```
 
-**JSON Export Format:**
+**restore_from_export.py** — Restore from JSON with library pre-fetch for match validation.
+
+```bash
+python3 restore_from_export.py export.json --apply
+```
+
+**restore_loved.py** — Restore loved songs from a text file (`Artist - Title`, one per line).
+
+```bash
+python3 restore_loved.py songs.txt --apply
+```
+
+**restore_library.py** — Restore from an iPhone backup (parses MediaLibrary.sqlitedb).
+
+```bash
+python3 restore_library.py --apply
+python3 restore_library.py --backup-path /path/to/backup --export-json data.json
+```
+
+### JSON Export Format
 
 ```json
 {
   "loved_songs": [
-    {"name": "Song Title", "artist": "Artist Name", "album": "Album Name"}
+    {"name": "Title", "artist": "Artist", "album": "Album"}
   ],
   "playlists": [
-    {
-      "name": "Playlist Name",
-      "tracks": [
-        {"name": "Song Title", "artist": "Artist Name", "album": "Album Name"}
-      ]
-    }
+    {"name": "Playlist", "tracks": [{"name": "Title", "artist": "Artist", "album": "Album"}]}
   ]
 }
 ```
 
-## Additional Scripts
-
-- `embed_artwork.py` - Embed artwork into files without re-importing (requires `mutagen`)
-- `restore_from_export.py` - Alternative restore that pre-fetches library for matching
-- `restore_loved.py` - Restore loved songs from a simple text file
-- `restore_library.py` - Restore from iPhone backup (requires `pymobiledevice3`)
-
 ## How It Works
 
-The scripts use AppleScript (via `osascript`) to communicate with the Music app. This is the same automation interface that Shortcuts and Automator use, ensuring compatibility and reliability.
+Scripts use AppleScript (`osascript`) to communicate with the Music app.
 
 ## License
 

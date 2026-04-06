@@ -51,6 +51,13 @@ class Playlist:
     tracks: List[Track]
 
 
+def escape_for_applescript(s: str) -> str:
+    """Escape string for use in AppleScript double-quoted strings."""
+    if not s:
+        return ""
+    return s.replace('\\', '\\\\').replace('"', '\\"')
+
+
 def normalize_string(s: str) -> str:
     """Normalize string for comparison."""
     if not s:
@@ -183,8 +190,9 @@ def extract_loved_songs(db_path: Path) -> List[Track]:
             cursor.execute("PRAGMA table_info(item)")
             columns = [col[1] for col in cursor.fetchall()]
 
-            if 'loved' in columns or 'is_loved' in columns:
-                loved_col = 'loved' if 'loved' in columns else 'is_loved'
+            ALLOWED_LOVED_COLUMNS = {'loved', 'is_loved'}
+            loved_col = next((c for c in columns if c in ALLOWED_LOVED_COLUMNS), None)
+            if loved_col:
                 cursor.execute(f"""
                     SELECT title, artist, album
                     FROM item
@@ -261,8 +269,8 @@ def extract_playlists(db_path: Path) -> List[Playlist]:
                         )
                         if track.name:
                             tracks.append(track)
-                except:
-                    pass
+                except Exception as e:
+                    print(f"  Warning: Could not read tracks for playlist '{playlist_name}': {e}")
 
                 if tracks:
                     playlists.append(Playlist(name=playlist_name, tracks=tracks))
@@ -294,7 +302,7 @@ def get_current_library() -> Set[Tuple[str, str, str]]:
     end tell
     '''
 
-    result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True)
+    result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=600)
 
     if result.returncode != 0:
         print(f"Error fetching library: {result.stderr}")
@@ -359,8 +367,8 @@ def set_loved_status(tracks: List[Track], dry_run: bool = True) -> int:
             print(f"  Progress: {i + 1}/{len(tracks)}")
 
         # Build search criteria
-        name_escaped = track.name.replace('"', '\\"').replace('\\', '\\\\')
-        artist_escaped = track.artist.replace('"', '\\"').replace('\\', '\\\\')
+        name_escaped = escape_for_applescript(track.name)
+        artist_escaped = escape_for_applescript(track.artist)
 
         script = f'''
         tell application "Music"
@@ -382,7 +390,7 @@ def set_loved_status(tracks: List[Track], dry_run: bool = True) -> int:
                 count = int(result.stdout.strip())
                 if count > 0:
                     success += 1
-            except:
+            except (ValueError, AttributeError):
                 pass
 
     return success
@@ -404,7 +412,7 @@ def create_playlist(playlist: Playlist, library: Set[Tuple[str, str, str]], dry_
     print(f"\nCreating playlist '{playlist.name}' with {len(matched)} tracks...")
 
     # Create the playlist
-    name_escaped = playlist.name.replace('"', '\\"').replace('\\', '\\\\')
+    name_escaped = escape_for_applescript(playlist.name)
     script = f'''
     tell application "Music"
         try
@@ -424,8 +432,8 @@ def create_playlist(playlist: Playlist, library: Set[Tuple[str, str, str]], dry_
     # Add tracks to playlist
     added = 0
     for track in matched:
-        track_escaped = track.name.replace('"', '\\"').replace('\\', '\\\\')
-        artist_escaped = track.artist.replace('"', '\\"').replace('\\', '\\\\')
+        track_escaped = escape_for_applescript(track.name)
+        artist_escaped = escape_for_applescript(track.artist)
 
         script = f'''
         tell application "Music"
@@ -446,7 +454,7 @@ def create_playlist(playlist: Playlist, library: Set[Tuple[str, str, str]], dry_
         try:
             if int(result.stdout.strip()) > 0:
                 added += 1
-        except:
+        except (ValueError, AttributeError):
             pass
 
     print(f"  Added {added}/{len(matched)} tracks")

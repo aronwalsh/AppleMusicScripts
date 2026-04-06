@@ -44,7 +44,7 @@ def mark_loved(name: str, artist: str) -> bool:
     result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=30)
     try:
         return int(result.stdout.strip()) > 0
-    except:
+    except (ValueError, AttributeError):
         return False
 
 
@@ -82,7 +82,7 @@ def create_playlist_and_add_tracks(name: str, tracks: list) -> tuple:
         try:
             if int(result.stdout.strip()) > 0:
                 added += 1
-        except:
+        except (ValueError, AttributeError):
             pass
 
     return added, len(tracks) - added

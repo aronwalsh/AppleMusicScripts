@@ -15,6 +15,26 @@ from pathlib import Path
 
 sys.stdout.reconfigure(line_buffering=True)
 
+MAX_ARTWORK_SIZE = 20 * 1024 * 1024  # 20MB
+
+
+def escape_for_applescript(s: str) -> str:
+    """Escape string for use in AppleScript double-quoted strings."""
+    if not s:
+        return ""
+    return s.replace('\\', '\\\\').replace('"', '\\"')
+
+
+def is_close_match(query: str, result: str) -> bool:
+    """Check if two strings are a close match, not just substring containment."""
+    if query == result:
+        return True
+    if query in result or result in query:
+        longer = max(len(query), len(result))
+        shorter = min(len(query), len(result))
+        return shorter / longer >= 0.5 if longer > 0 else False
+    return False
+
 
 def get_tracks_without_artwork():
     """Get all tracks that have no artwork."""
@@ -76,9 +96,9 @@ def search_itunes_artwork(album: str, artist: str) -> str:
                 result_album = result.get('collectionName', '').lower()
                 result_artist = result.get('artistName', '').lower()
 
-                # Check for match (allowing partial matches)
-                if (album_lower in result_album or result_album in album_lower) and \
-                   (artist_lower in result_artist or result_artist in artist_lower):
+                # Check for close match
+                if is_close_match(album_lower, result_album) and \
+                   is_close_match(artist_lower, result_artist):
                     # Get high-res artwork (replace 100x100 with 600x600)
                     artwork_url = result.get('artworkUrl100', '')
                     if artwork_url:
@@ -90,7 +110,7 @@ def search_itunes_artwork(album: str, artist: str) -> str:
                 return artwork_url.replace('100x100', '600x600')
 
     except Exception as e:
-        pass
+        print(f"  Warning: iTunes API error for '{album}': {e}")
 
     return None
 
@@ -103,11 +123,15 @@ def download_artwork(url: str) -> bytes:
         })
         with urllib.request.urlopen(req, timeout=30) as response:
             data = response.read()
+            if len(data) > MAX_ARTWORK_SIZE:
+                print(f"  Warning: Artwork too large ({len(data)} bytes), skipping")
+                return None
             # Verify it's actually an image (JPEG starts with FFD8)
             if len(data) > 100 and (data[:2] == b'\xff\xd8' or data[:8] == b'\x89PNG\r\n\x1a\n'):
                 return data
             return None
     except Exception as e:
+        print(f"  Warning: Failed to download artwork: {e}")
         return None
 
 
@@ -119,8 +143,8 @@ def apply_artwork_to_album(artist: str, album: str, artwork_data: bytes) -> int:
         temp_path = f.name
 
     try:
-        artist_esc = artist.replace('\\', '\\\\').replace('"', '\\"')
-        album_esc = album.replace('\\', '\\\\').replace('"', '\\"')
+        artist_esc = escape_for_applescript(artist)
+        album_esc = escape_for_applescript(album)
 
         # AppleScript - set artworks property directly
         script = f'''
@@ -147,7 +171,7 @@ def apply_artwork_to_album(artist: str, album: str, artwork_data: bytes) -> int:
         if result.returncode == 0:
             try:
                 return int(result.stdout.strip())
-            except:
+            except ValueError:
                 return 0
         return 0
     finally:
